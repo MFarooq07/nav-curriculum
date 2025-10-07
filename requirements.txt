@@ -1,0 +1,6 @@
+﻿gymnasium
+numpy
+torch
+opencv-python
+matplotlib
+tqdm

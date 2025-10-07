@@ -1,0 +1,16 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+.env/
+# IDE
+.vscode/
+.idea/
+# Project outputs
+/results/
+# OS
+.DS_Store
+Thumbs.db
