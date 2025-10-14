@@ -69,7 +69,7 @@ class GridNav:
 
         # bounds or wall -> collision (terminate)
         if not self._in_bounds(next_pos) or self._is_wall(next_pos):
-            reward += -0.2
+            reward += -1.0
             done = True
             info["event"] = "collision"
             obs = self._get_obs()
