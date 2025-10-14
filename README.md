@@ -25,6 +25,23 @@ Reward: +1 on goal, -0.01 step cost, -1 on collision, terminate on goal/collisio
 
 Finish line: `python -c "from envs.grid_nav import GridNav; print(GridNav().reset())"` works.
 
+To check if the day 2 has been correctly implemented and is working fine, open the terminal in Visual Studio (keyboard shortcut `ctrl + shift + '`) or the Windows Poweshell and run the following commands.
+`@'`
+`from envs.grid_nav import GridNav, GridConfig`
+`env = GridNav(GridConfig(seed=123))`
+`obs = env.reset()`
+`total = 0.0`
+`for t in range(20):`
+`    obs, r, done, info = env.step(0)`
+`    total += r`
+`    if done:`
+`        break`
+`print("steps:", t+1, "return:", round(total,3), "done:", done, "info:", info)`
+`print("obs_len:", len(obs))`
+`'@ | python -`
+
+ 
+
 
 
 
