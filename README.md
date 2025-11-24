@@ -3,7 +3,7 @@
 Tiny RL project to show that a simple curriculum (ray distances → tiny images) improves sample efficiency and final success for maze navigation.
 CPU-only, Python-only. Matrix: rays-baseline, pixels-from-scratch, pixels-with-curriculum.
 
-## Day 1 Project bootstrap
+## Day 1: Project bootstrap
 
 * Make repo folders & requirements.txt; python -m venv .venv && pip install -r requirements.txt.
 
@@ -14,7 +14,7 @@ CPU-only, Python-only. Matrix: rays-baseline, pixels-from-scratch, pixels-with-c
 * Finish line: env set up, seed util done.
 
 
-## Day 2 Minimal grid world (ray sensors)
+## Day 2: Minimal grid world (ray sensors)
 * In `envs/grid_nav.py`: 2D grid with walls, start/goal; 4 actions (↑↓←→) or left/right/forward if you prefer diff-drive.
 
 * Observation = k=8 ray distances (normalized 0..1) + goal direction (dx,dy) clipped.
@@ -54,7 +54,22 @@ To check if the day 2 has been correctly implemented and is working fine, open t
 
 `'@ | python -`
 
- 
+ ## Day 3: CLI runner + rollouts + CSV logs + plotting
+* Make sure you are in the correct directory `nav-curriculum` (or whatever you have named it) and have activated the virtual environment
+* Instal if you haven't already the following
+    * numpy
+    * pandas
+    * matplotlib
+as follows: `pip install numpy pandas matplotlib`   
+* Now create `cli.py`
+* Create `plots.py` to make the plots of the results
+* Run rollouts
+
+`python .\cli.py --episodes 200 --seed 123 --out .\resultsl`
+
+* and make plots 
+
+`python .\plots.py --csv (Get-ChildItem .\results\run_*\metrics.csv | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName`
 
 
 
