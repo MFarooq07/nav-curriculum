@@ -72,6 +72,18 @@ as follows: `pip install numpy pandas matplotlib`
 `python .\plots.py --csv (Get-ChildItem .\results\run_*\metrics.csv | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName`
 
 
+# A RECAP OF WHAT WE HAVE DONE SO FAR TILL DAY 3?
+* **Made a 2d maze with random walls:** there's an agent (red) and a goal (green). the agent i.e. robot can move up, down, left, right.if it reaches wall then collision; if border end and if goal thats a success
+
+* **Observations** the agent “sees” with 8 short rays around it (how far to the nearest wall in each direction) + a unit vector to the goal (goal direction).
+
+* **Rewards & Endings** small step penalty each move, big reward on goal, penalty + terminate on collision, or stop at a max step limit.
+
+* **CLI runner + Logging** a command-line script runs many episodes with a random policy, logs per-episode results (return, steps, success, etc.) to CSV.
+
+* **a success plot** we load the CSV and plot success rate over time to see whether episodes are reaching the goal at all with the current (random) policy.
+
+
 
 
 
