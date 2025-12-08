@@ -1,81 +1,98 @@
-﻿import os, csv, json, time, argparse, numpy as np
+﻿# cli.py
+import argparse
+import csv
 from pathlib import Path
+import numpy as np
 
-# Import your Day-2 env
-from envs.grid_nav import GridNav, GridConfig, ACTIONS
+from envs.grid_nav import GridNav, GridConfig   # ensure file is envs/gridnav.py
+from envs.policies import AStarFollower        # ensure file is envs/policies.py
 
-def run_episode(env: GridNav, policy="random", seed=None):
-    if seed is not None:
-        obs = env.reset(seed=seed)
-    else:
-        obs = env.reset()
+ACTIONS = np.array([[ -1,  0],
+                    [  1,  0],
+                    [  0, -1],
+                    [  0,  1]], dtype=np.int32)
+
+def run_episode(env: GridNav, policy: str):
+    obs = env.reset()
     done = False
-    total = 0.0
     steps = 0
+    total = 0.0
+    event = "timeout"
+
+    # Prepare A* path (list of (x,y)) if requested
+    path = []
+    if policy == "astar":
+        follower = AStarFollower()
+        start = tuple(env.agent.tolist())
+        goal  = tuple(env.goal.tolist())
+        grid  = env.grid.copy()
+        path = follower.plan(grid, start, goal)  # may return []
+
     while not done:
         if policy == "random":
-            a = np.random.randint(0, len(ACTIONS))
+            a = int(np.random.randint(0, 4))
+        elif policy == "astar":
+            if path:
+                nx, ny = path.pop(0)
+                ax, ay = env.agent
+                dx, dy = (nx - ax, ny - ay)
+                if   (dx, dy) == (-1, 0): a = 0
+                elif (dx, dy) == ( 1, 0): a = 1
+                elif (dx, dy) == ( 0,-1): a = 2
+                elif (dx, dy) == ( 0, 1): a = 3
+                else:
+                    # Path discontinuity: stop moving (or choose random)
+                    a = 0
+            else:
+                # No path available or finished following it
+                a = 0
         else:
-            # place for future heuristic/learned policy
-            a = np.random.randint(0, len(ACTIONS))
+            raise ValueError(f"Unknown policy: {policy}")
+
         obs, r, done, info = env.step(a)
         total += r
         steps += 1
-    return steps, float(total), info
+        if done:
+            event = info.get("event", "timeout")
+
+    return {"steps": steps, "return": float(total), "event": event}
 
 def main():
-    p = argparse.ArgumentParser(description="GridNav rollouts → CSV logs")
-    p.add_argument("--episodes", type=int, default=100, help="number of episodes")
-    p.add_argument("--seed", type=int, default=123, help="base RNG seed")
-    p.add_argument("--out", type=str, default="results", help="output root directory")
-    p.add_argument("--wall_prob", type=float, default=None, help="override cfg.wall_prob")
-    p.add_argument("--H", type=int, default=None, help="override cfg.H")
-    p.add_argument("--W", type=int, default=None, help="override cfg.W")
-    p.add_argument("--ray_max", type=int, default=None, help="override cfg.ray_max")
-    args = p.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--policy", choices=["random", "astar"], required=True)
+    ap.add_argument("--episodes", type=int, default=100)
+    ap.add_argument("--seed", type=int, default=123)
+    ap.add_argument("--out", type=str, required=True)
 
-    # Build config (overrides optional)
-    cfg = GridConfig()
-    if args.wall_prob is not None: cfg.wall_prob = args.wall_prob
-    if args.H is not None: cfg.H = args.H
-    if args.W is not None: cfg.W = args.W
-    if args.ray_max is not None: cfg.ray_max = args.ray_max
+    # env config
+    ap.add_argument("--wall_prob", type=float, default=0.18)
+    ap.add_argument("--H", type=int, default=15)
+    ap.add_argument("--W", type=int, default=15)
+    ap.add_argument("--ray_max", type=int, default=10)
+    args = ap.parse_args()
 
-    # Make output run dir
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    run_dir = Path(args.out) / f"run_{ts}"
-    run_dir.mkdir(parents=True, exist_ok=True)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Save config as JSON for reproducibility
-    with open(run_dir / "config.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "episodes": args.episodes,
-            "seed": args.seed,
-            "grid_config": {
-                "H": cfg.H, "W": cfg.W, "wall_prob": cfg.wall_prob,
-                "max_steps": cfg.max_steps, "n_rays": cfg.n_rays, "ray_max": cfg.ray_max, "seed": cfg.seed
-            }
-        }, f, indent=2)
-
-    # Prepare env and RNG
-    np.random.seed(args.seed)
+    cfg = GridConfig(H=args.H, W=args.W, wall_prob=args.wall_prob, ray_max=args.ray_max, seed=args.seed)
     env = GridNav(cfg)
 
-    # CSV header
-    csv_path = run_dir / "metrics.csv"
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(["episode","steps","return","event","success","episode_seed"])
+    # Write CSV
+    with out_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["episode", "policy", "steps", "return", "event"])
+        writer.writeheader()
 
-        for ep in range(1, args.episodes + 1):
-            ep_seed = int(np.random.randint(0, 2**31-1))
-            steps, ret, info = run_episode(env, seed=ep_seed)
-            event = info.get("event", "")
-            success = 1 if event == "goal" else 0
-            w.writerow([ep, steps, f"{ret:.6f}", event, success, ep_seed])
+        for ep in range(args.episodes):
+            row = run_episode(env, args.policy)
+            writer.writerow({
+                "episode": ep,
+                "policy": args.policy,
+                "steps": row["steps"],
+                "return": row["return"],
+                "event": row["event"],
+            })
 
-    print(f"[OK] Wrote: {csv_path}")
-    print("[TIP] Next: python plots.py --csv", csv_path)
+    print(f"✅ Wrote results to: {out_path}")
 
 if __name__ == "__main__":
     main()

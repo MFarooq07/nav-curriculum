@@ -1,4 +1,4 @@
-﻿from envs.grid_nav import GridNav, GridConfig
+﻿from eenvs.gridnavimport GridNav, GridConfig
 from envs.wrappers import make_gridnav
 
 def test_step_and_done():
